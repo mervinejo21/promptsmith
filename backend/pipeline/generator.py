@@ -10,30 +10,24 @@ def build_message(
     edge_cases: list,
     previous_prompt: str = None,
     previous_score: float = None,
-    previous_weakness: str = None
+    previous_weakness: str = None,
+    is_first_iteration: bool = True
 ) -> str:
-    message = f"""
-User statement: {statement}
-
-Examples:
-{format_items(examples)}
-
-Edge cases:
-{format_items(edge_cases)}
+    if is_first_iteration:
+        # Send full context only on first iteration
+        return f"""
+statement: {statement}
+examples: {[{"input": e.input, "expected": e.expected_output} for e in examples]}
+edge_cases: {[{"input": e.input, "expected": e.expected_output} for e in edge_cases]}
 """
-    if previous_prompt:
-        message += f"""
-Previous prompt: {previous_prompt}
-Previous score: {previous_score}
-Weakness to fix: {previous_weakness}
+    else:
+        # Only send what changed — saves tokens!
+        return f"""
+statement: {statement}
+previous_prompt: {previous_prompt}
+previous_score: {previous_score}
+weakness: {previous_weakness}
 """
-    return message
-
-def format_items(items: list) -> str:
-    return "\n".join([
-        f"- Input: {item.input} | Expected: {item.expected_output}"
-        for item in items
-    ])
 
 def generate_prompt(
     statement: str,
@@ -42,23 +36,23 @@ def generate_prompt(
     previous_prompt: str = None,
     previous_score: float = None,
     previous_weakness: str = None
-) -> str:
+) -> tuple[str, int]:
     system_prompt = load_template()
+    is_first = previous_prompt is None
+
     user_message = build_message(
-        statement,
-        examples,
-        edge_cases,
-        previous_prompt,
-        previous_score,
-        previous_weakness
+        statement, examples, edge_cases,
+        previous_prompt, previous_score, previous_weakness,
+        is_first_iteration=is_first
     )
 
     response = client.chat.complete(
         model="mistral-small-latest",
         messages=[
-            { "role": "system", "content": system_prompt },
-            { "role": "user", "content": user_message }
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message}
         ]
     )
 
-    return response.choices[0].message.content
+    tokens_used = response.usage.total_tokens
+    return response.choices[0].message.content, tokens_used
