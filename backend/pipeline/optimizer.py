@@ -16,6 +16,8 @@ async def run_optimizer(
     previous_score = None
     previous_weakness = None
     total_tokens = 0
+    best_prompt = None
+    best_score = 0
 
     for iteration in range(1, max_iterations + 1):
 
@@ -73,6 +75,11 @@ async def run_optimizer(
             score_breakdown["quality"]    * weights.quality    / 100
         )
 
+        # STEP 4.5 — Track best prompt
+        if final_score > best_score:
+            best_score = final_score
+            best_prompt = generated_prompt
+
         # STEP 5 — Stream SSE event with token usage
         sse_event = {
             "iteration": iteration,
@@ -99,8 +106,8 @@ async def run_optimizer(
     # STEP 8 — Final result with total token summary
     final_event = {
         "type": "done",
-        "final_prompt": generated_prompt,
-        "final_score": round(final_score, 2),
+        "final_prompt": best_prompt,
+        "final_score": round(best_score, 2),
         "iterations_taken": iteration,
         "total_tokens_used": total_tokens
     }
