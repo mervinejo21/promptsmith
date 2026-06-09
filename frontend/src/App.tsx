@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { InputForm } from './components/InputForm'
-import { StreamViewer } from './components/StreamViewer'
 import { ResultDisplay } from './components/ResultDisplay'
 import { useSSE } from './hooks/useSSE'
 import type { OptimizeRequest } from './api/client'
